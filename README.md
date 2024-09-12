@@ -2,6 +2,7 @@
  argv를 사용하지 않는 파일임<br/>
  가급적 ```excel().show_plot(환자번호, preprocess, interpolate, cycle=1, opt=False)```만 사용하길 바람 <br/>
  pat_num: 환자번호 <br/>
+ bas: 약 미투여 True/False <br/>
  preprocess: 전처리 True/False <br/>
  interpolate: 피크보간 True/False <br/>
  cycle=1: 피크보간 횟수 (현 시점에선 1로 사용할 것)<br/>
@@ -13,10 +14,11 @@
   ```별도의 denoise된 npy를 지정하므로 denoise(5번 참조)가 적용된 파일이 필요```
 
 # 3. data_analysis
- 1) 클러스터링을 통해 낮은 값과 높은 값을 분리
- 2) 높은 값 그룹을 polynomial regression을 통해 2차함수로 피팅하여 미분
- 3) 도출된 극댓값을 기준으로 좌측의 낮은 값 그룹의 끝 프레임을 이용해 TFC를 출력
- 4) 우측의 낮은 값 그룹의 시작 프레임을 이용해 CCFC 출력 (튜닝값 수정중)
+ 1) 클러스터링을 통해 낮은 값과 높은 값을 분리 -> 각각 1, 2, 3 구간으로 명칭
+ 2) 높은 값 그룹(2구간)을 polynomial regression을 통해 2차함수로 피팅하여 극댓값 구함
+ 3) 1구간의 극솟값과 2구간의 극댓값으로 TFC를 출력
+ 4) 3구간의 극솟값을 피팅하기 어려우므로, [2,3]구간을 3차함수로 피팅하고 클러스터링까지 거쳐서 나온 하위값의 중간값을 극솟값으로 구함
+ 5) 2구간의 극댓값과 3구간의 극솟값으로 CCFC
  
  11/21 RMSE 결과 TFC(4.8, 6.2), CCFC(7.8, 13.7)
 
