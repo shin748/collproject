@@ -4,6 +4,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 from interpolation import interp
 from multiprocessing import Pool, Process
+import multiprocessing
 from functools import partial
 import parmap
 
@@ -39,7 +40,7 @@ class analysis:
         for value in ex:
             if str(value)[-1] == 'I': value=abs(complex(value))
             if value>=start and value<=end: exs.append(value)
-        if len(exs) == 0: exs.append(start); exs.append(end) #극값이 없으면 개형을 따른다.
+        if len(exs) == 0: exs.append(end); exs.append(start) #극값이 없으면 개형을 따른다.
         return int(exs[0]), int(exs[-1])
     
 
@@ -68,42 +69,65 @@ class analysis:
         if test == True:
             TFCS, TFCE, CCFCS, CCFCE = [], [], [], []
             #########################################################
-            #intrp = partial(interp().data_interpolation, range(2,12), xdata[0:section1_end+1], xdata[0:section1_end+1])
-            #mp.map(intrp, ydata[0:section1_end+1])
-            for a in range(2,7): #2,3,4,5,6
-                ##구간1 피팅####################
-                mat_i1, ypred1, ex = interp().data_interpolation(a, xdata[0:section1_end+1], xdata[0:section1_end+1], ydata[0:section1_end+1], True)
-                '''
-                mat_i1, ypred1, ex = Process(target=interp().data_interpolation, args=(a, xdata[0:section1_end+1], xdata[0:section1_end+1], ydata[0:section1_end+1]))
-                '''
+            p = Pool(processes = multiprocessing.cpu_count())
+            p1 = p.starmap_async(interp().data_interpolation, [[i, xdata[0:section1_end+1], xdata[0:section1_end+1], ydata[0:section1_end+1], True] for i in range(2,7)])
+            print('구간1 complete..')
+            p2 = p.starmap_async(interp().data_interpolation, [[i, xdata[section1_end:section2_end+1], xdata[section1_end:section2_end+1], ydata[section1_end:section2_end+1], True] for i in range(2,7)])
+            print('구간2 complete..')
+            p3 = p.starmap_async(interp().data_interpolation, [[i, xdata[section2_end:gsize], xdata[section2_end:gsize], ydata[section2_end:gsize], True] for i in range(2,7)])
+            print('구간3 complete..')
+
+            print('getting return values...')
+            res1 = p1.get(); res2 = p2.get(); res3 = p3.get()
+            print('getting return values has completed')
+            for n_deg in res1:
+                mat_i1, ypred1, ex = n_deg
                 left_ex1, right_ex1 = self.get_ex(ex, 0, section1_end) #구간1 극값 = 극솟값
+                TFCS.append(right_ex1)
+
+            for n_deg in res2:
+                mat_i2, ypred2, ex = n_deg
+                left_ex2, right_ex2 = self.get_ex(ex, section1_end, section2_end) #구간2 극값 = 극댓값
+                TFCE.append(left_ex2); CCFCS.append(right_ex2)
+
+            for n_deg in res3:
+                mat_i3, ypred3, ex = n_deg
+                left_ex3, right_ex3 = self.get_ex(ex, section2_end, gsize)
+                CCFCE.append(left_ex3)
+
+            p.close(); p.join()
+            '''
+            for a in range(9,11):
+                ##구간1 피팅####################
+                #mat_i1, ypred1, ex = interp().data_interpolation(a, xdata[0:section1_end+1], xdata[0:section1_end+1], ydata[0:section1_end+1], True)
+                #left_ex1, right_ex1 = self.get_ex(ex, 0, section1_end) #구간1 극값 = 극솟값
                 TFCS.append(right_ex1)
             print('구간1 complete..')
 
-            for b in range(2, 7):
+            for b in range(9, 11):
             ######구간2 피팅####################
                 mat_i2, ypred2, ex = interp().data_interpolation(b, xdata[section1_end:section2_end+1], xdata[section1_end:section2_end+1], ydata[section1_end:section2_end+1], True)
                 left_ex2, right_ex2 = self.get_ex(ex, section1_end, section2_end) #구간2 극값 = 극댓값
                 TFCE.append(left_ex2); CCFCS.append(right_ex2)
             print('구간2 complete..')
 
-            for c in range(2, 7):
+            for c in range(9, 11):
                 #######구간3 피팅####################
                 mat_i3, ypred3, ex = interp().data_interpolation(c,xdata[section2_end:gsize], xdata[section2_end:gsize], ydata[section2_end:gsize], True)
                 left_ex3, right_ex3 = self.get_ex(ex, section2_end, gsize)
                 CCFCE.append(left_ex3)
             print('구간3 complete..')
-        
+            '''
         else:
-            mat_i1, ypred1, ex = interp().data_interpolation(2, xdata[0:section1_end+1], xdata[0:section1_end+1], ydata[0:section1_end+1])
+            mat_i1, ypred1, ex = interp().data_interpolation(4, xdata[0:section1_end+1], xdata[0:section1_end+1], ydata[0:section1_end+1])
             left_ex1, right_ex1 = self.get_ex(ex, 0, section1_end) #구간1 극값 = 극솟값
             TFCS = right_ex1
 
-            mat_i2, ypred2, ex = interp().data_interpolation(2, xdata[section1_end:section2_end+1], xdata[section1_end:section2_end+1], ydata[section1_end:section2_end+1])
+            mat_i2, ypred2, ex = interp().data_interpolation(4, xdata[section1_end:section2_end+1], xdata[section1_end:section2_end+1], ydata[section1_end:section2_end+1])
             left_ex2, right_ex2 = self.get_ex(ex, section1_end, section2_end) #구간2 극값 = 극댓값
             TFCE, CCFCS = left_ex2, right_ex2
 
-            mat_i3, ypred3, ex = interp().data_interpolation(2,xdata[section2_end:gsize], xdata[section2_end:gsize], ydata[section2_end:gsize])
+            mat_i3, ypred3, ex = interp().data_interpolation(4,xdata[section2_end:gsize], xdata[section2_end:gsize], ydata[section2_end:gsize])
             left_ex3, right_ex3 = self.get_ex(ex, section2_end, gsize)
             CCFCE = left_ex3
 
@@ -118,35 +142,3 @@ class analysis:
         c_list, group = self.clustering(2, xdata, ydata, isgmm, draw=False)
         return self.cal_TFC_CCFC(xdata, ydata, c_list, group, test)
     ####################################################
-
-
-    '''
-    def cluster_preproc(self, xdata, ydata, c_list, group):
-        gsize = c_list.shape[0]; chk=0; section1_end=0; section2_end=0
-
-        ############## 전처리(?) 시작 ###############################
-        ###구간1,2 파악(클러스터링 수정 전, 구간1만 파악하는 용도)######################
-        section1_end, section2_end = self.get_gsection(c_list, group)
-
-        #####구간2 to 3 통째로 피팅####
-        mat_i2, ypred = interp().data_interpolation(3, np.array(range(section1_end, gsize)), np.array(range(section1_end, gsize)), ydata[section1_end:gsize], False)
-
-        
-        ####구간[2,3]에 대해 피팅한 그래프를 클러스터링 (임시적임. -> 기존 peak_interpolation의 구간1,2,3을 좀 더 명확하게 분리하기 위함)
-        c_list2, group2 = self.clustering(2, mat_i2, ypred, False, False)
-        section1_end2, section2_end2 = self.get_gsection(c_list2, group2, section1_end)
-
-        ######구간[2,3] 클러스터링 결과 나눠진 구간점을 이용하여
-        ######구간 [1, 2 3]으로 좀 더 명확히 분리함
-        for i in range(gsize):
-            if i>=section1_end and i<=section1_end2:
-                if c_list[i] == group[0]:
-                    c_list[i] = group[1]; section2_end = i
-
-            if i>section1_end2:
-                if c_list[i] == group[1]: c_list[i] = group[0]
-        
-        self.div3_drawing(xdata, ydata, section1_end, section2_end) #그냥 지저분해서 함수로 만듦
-
-        return section1_end, section2_end #첫 클러스터링 결과로 나오게 될 영역1,2,3을 구분짓는 구간값 2개(1->2, 2->3)를 반환
-    '''
